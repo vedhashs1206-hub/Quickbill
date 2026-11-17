@@ -124,37 +124,50 @@
   </div>
 </div>
 
-<!-- ₹20/MONTH PAYWALL POPUP -->
-<div id="9307706937@fam" class="no-print">
+<!-- FAMAPP ₹20/MONTH PAYWALL POPUP -->
+<div id="paywallModal" class="no-print">
   <div class="modal-box">
     <h2 style="border:none; margin-bottom:4px;">Free Limit Reached (5/5 Used)</h2>
-    <p style="color:#4b5563; font-size:14px;">Continue generating unlimited shop bills for 30 days:</p>
+    <p style="color:#4b5563; font-size:14px;">Unlock unlimited shop bills for 30 days:</p>
     <div class="price-tag">₹20 <span style="font-size:14px; color:#6b7280;">/ month</span></div>
     
-    <p style="font-size:13px; background:#f0fdf4; padding:10px; border-radius:8px; color:#166534;">
-      Pay ₹20 via UPI to <b>9307706937@fam</b> & click below to get your 30-day activation code.
+    <a id="upiPayBtn" href="#" class="btn-success" style="display:block; text-decoration:none; padding:12px;">
+      ⚡ Pay ₹20 via UPI App (GPay / PhonePe / Fam)
+    </a>
+    <p style="font-size:12px; color:#6b7280; margin:6px 0 14px 0;">
+      Or pay ₹20 to UPI ID: <b id="displayUpi">yourname@fam</b>
     </p>
     
-    <button class="btn-whatsapp" onclick="requestCodeOnWhatsApp()">💬 Send ₹20 Receipt on WhatsApp</button>
-    
-    <div style="margin-top:16px; display:flex; gap:8px;">
-      <input type="text" id="unlockInput" placeholder="Enter Activation Code" />
-      <button class="btn-primary" onclick="verifyCode()">Unlock</button>
+    <div style="text-align:left; font-size:13px; font-weight:600; margin-bottom:4px;">
+      Step 2: Enter 12-Digit UPI Ref / UTR Number to Auto-Unlock:
+    </div>
+    <div style="display:flex; gap:8px;">
+      <input type="number" id="utrInput" placeholder="e.g. 632189450123" />
+      <button class="btn-primary" onclick="unlockWithUTR()">Unlock Now</button>
     </div>
     <p id="codeError" style="color:#ef4444; font-size:12px; margin-top:6px;"></p>
   </div>
 </div>
 
 <script>
+  // ====== CHANGE THIS TO YOUR REAL FAMAPP UPI ID ======
+  const FAMAPP_UPI_ID = "yourname@fam"; 
+  // ====================================================
+
+  const PAYEE_NAME = "QuickBill POS";
   const FREE_LIMIT = 5;
-  const MONTHLY_CODE = "SHOP20"; // Change this code monthly
-  const YOUR_WHATSAPP = "919307706937"; // Put your 10-digit number with 91
 
   let items = [];
   let billCounter = parseInt(localStorage.getItem('billCounter')) || 1001;
   let freeUsed = parseInt(localStorage.getItem('freeUsed')) || 0;
 
   window.onload = () => {
+    // Set up automatic FamApp UPI payment link
+    document.getElementById('displayUpi').innerText = FAMAPP_UPI_ID;
+    const upiUrl = `upi://pay?pa=${encodeURIComponent(FAMAPP_UPI_ID)}&pn=${encodeURIComponent(PAYEE_NAME)}&am=20&cu=INR&tn=${encodeURIComponent('QuickBill 30 Days')}`;
+    document.getElementById('upiPayBtn').href = upiUrl;
+
+    // Load saved shop details
     ['shopName', 'shopPhone', 'shopAddress', 'taxRate'].forEach(id => {
       if (localStorage.getItem(id)) document.getElementById(id).value = localStorage.getItem(id);
     });
@@ -175,6 +188,7 @@
       const daysLeft = Math.ceil((parseInt(localStorage.getItem('proExpiry')) - Date.now()) / (1000 * 60 * 60 * 24));
       badge.innerText = `PRO ACTIVE (${daysLeft} days left)`;
       badge.style.background = "#22c55e";
+      badge.style.color = "#052e16";
     } else {
       const left = Math.max(0, FREE_LIMIT - freeUsed);
       badge.innerText = `FREE PLAN: ${left} of ${FREE_LIMIT} bills left`;
@@ -208,23 +222,27 @@
     document.getElementById('rBillNo').innerText = '#' + billCounter;
   }
 
-  function requestCodeOnWhatsApp() {
-    const shop = document.getElementById('shopName').value || "My Shop";
-    const msg = `Hi! I paid ₹20 for QuickBill POS monthly plan. Shop Name: ${shop}. Please send my activation code.`;
-    window.open(`https://wa.me/${YOUR_WHATSAPP}?text=${encodeURIComponent(msg)}`, '_blank');
-  }
+  function unlockWithUTR() {
+    const utr = document.getElementById('utrInput').value.trim();
+    const usedUtrs = JSON.parse(localStorage.getItem('usedUtrs') || '[]');
 
-  function verifyCode() {
-    const entered = document.getElementById('unlockInput').value.trim().toUpperCase();
-    if (entered === MONTHLY_CODE) {
-      const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
-      localStorage.setItem('proExpiry', Date.now() + thirtyDaysMs);
-      document.getElementById('paywallModal').style.display = 'none';
-      updatePlanBanner();
-      alert("Unlocked! Enjoy unlimited billing for 30 days.");
-    } else {
-      document.getElementById('codeError').innerText = "Invalid code. Please check WhatsApp message.";
+    if (!/^\d{12}$/.test(utr)) {
+      document.getElementById('codeError').innerText = "Please enter the valid 12-digit UPI Reference / UTR number from your payment receipt.";
+      return;
     }
+    if (usedUtrs.includes(utr)) {
+      document.getElementById('codeError').innerText = "This UTR number has already been used.";
+      return;
+    }
+
+    usedUtrs.push(utr);
+    localStorage.setItem('usedUtrs', JSON.stringify(usedUtrs));
+    const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+    localStorage.setItem('proExpiry', Date.now() + thirtyDaysMs);
+
+    document.getElementById('paywallModal').style.display = 'none';
+    updatePlanBanner();
+    alert("Payment Verified! QuickBill POS is unlocked for 30 days.");
   }
 
   function addItem() {
@@ -293,3 +311,4 @@
 </script>
 </body>
 </html>
+
